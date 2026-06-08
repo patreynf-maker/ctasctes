@@ -375,7 +375,7 @@ function readF(file,n){
   else reader.readAsText(file,'latin1');
 }
 
-function processFiles(){
+async function processFiles(){
   document.getElementById('ub-err').textContent='';
   try{
     let sData=null, aData=null;
@@ -383,7 +383,7 @@ function processFiles(){
     const candidates=[rawF1,rawF2];
     for(const f of candidates){
       if(f.type==='xlsx'){
-        const rows=parseXLSX(f.buf);
+        const rows=await parseXLSX(f.buf);
         const hi=rows.findIndex(r=>r[0]==='Codigo'||r[0]==='Código');
         if(hi>=0){
           const headers=rows[hi];
@@ -428,184 +428,103 @@ function processFiles(){
 
 function showErr(m){document.getElementById('ub-err').textContent=m}
 
-// ── PARSE XLSX (sin librería externa) ──
-// Usamos un enfoque: convertir a CSV via DataView + ZIP parsing básico
-// Para evitar dependencia externa, parseamos el XML del xlsx manualmente
-function parseXLSX(buf){
-  // Intentar leer como texto CSV de respaldo si falla
-  try{
-    // Leer el archivo zip y extraer xl/worksheets/sheet1.xml
-    const bytes=new Uint8Array(buf);
-    const str=String.fromCharCode.apply(null,bytes);
-    // Buscar el XML de la hoja compartida (sharedStrings)
-    const zipEntries=readZip(bytes);
-    
-    let sharedStrings=[];
-    const ssEntry=zipEntries['xl/sharedStrings.xml']||zipEntries['xl\\sharedStrings.xml'];
-    if(ssEntry){
-      const ssXml=new TextDecoder('utf-8').decode(ssEntry);
-      const siMatches=[...ssXml.matchAll(/<si>.*?<\/si>/gs)];
-      sharedStrings=siMatches.map(m=>{
-        const t=m[0].replace(/<[^>]+>/g,'');
-        return decodeXML(t);
+// ── PARSE XLSX con DecompressionStream (nativo en Chrome/Edge/Firefox) ──
+async function parseXLSX(buf) {
+  try {
+    const bytes = new Uint8Array(buf);
+    const entries = await readZipAsync(bytes);
+    console.log('Entries ZIP:', Object.keys(entries));
+
+    // Shared strings
+    let sharedStrings = [];
+    if (entries['xl/sharedStrings.xml']) {
+      const xml = new TextDecoder('utf-8').decode(entries['xl/sharedStrings.xml']);
+      sharedStrings = [...xml.matchAll(/<si>([\s\S]*?)<\/si>/g)].map(m => {
+        const ts = [...m[1].matchAll(/<t[^>]*>([^<]*)<\/t>/g)].map(t => t[1]).join('');
+        return deXML(ts);
       });
     }
-    
-    const shEntry=zipEntries['xl/worksheets/sheet1.xml']||zipEntries['xl\\worksheets\\sheet1.xml'];
-    if(!shEntry) return [];
-    const shXml=new TextDecoder('utf-8').decode(shEntry);
-    
-    const rows=[];
-    const rowMatches=[...shXml.matchAll(/<row[^>]*>(.*?)<\/row>/gs)];
-    for(const rm of rowMatches){
-      const cells=[...rm[1].matchAll(/<c ([^>]*)>(.*?)<\/c>/gs)];
-      const row={};
-      let maxCol=0;
-      for(const cm of cells){
-        const attr=cm[1], content=cm[2];
-        const ref=(attr.match(/r="([A-Z]+)\d+"/)||[])[1]||'A';
-        const t=(attr.match(/t="([^"]+)"/)||[])[1]||'';
-        const colIdx=colToIdx(ref);
-        maxCol=Math.max(maxCol,colIdx);
-        let val='';
-        const vMatch=content.match(/<v>([^<]*)<\/v>/);
-        if(vMatch){
-          if(t==='s') val=sharedStrings[parseInt(vMatch[1])]||'';
-          else val=vMatch[1];
-        }
-        row[colIdx]=val;
+
+    // Sheet1
+    if (!entries['xl/worksheets/sheet1.xml']) {
+      console.error('No sheet1.xml. Entries:', Object.keys(entries));
+      return [];
+    }
+    const shXml = new TextDecoder('utf-8').decode(entries['xl/worksheets/sheet1.xml']);
+    const rows = [];
+
+    for (const rm of shXml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)) {
+      const rowObj = {};
+      let maxCol = 0;
+      for (const cm of rm[1].matchAll(/<c ([^>]*)>([\s\S]*?)<\/c>/g)) {
+        const ref = (cm[1].match(/r="([A-Z]+)\d+"/) || [])[1];
+        if (!ref) continue;
+        const ci = ref.split('').reduce((n,c) => n*26 + c.charCodeAt(0)-64, 0) - 1;
+        maxCol = Math.max(maxCol, ci);
+        const t = (cm[1].match(/t="([^"]+)"/) || [])[1] || '';
+        const vm = cm[2].match(/<v>([^<]*)<\/v>/);
+        let val = null;
+        if (vm) val = t==='s' ? (sharedStrings[+vm[1]]||'') : (+vm[1] === +vm[1] ? +vm[1] : vm[1]);
+        rowObj[ci] = val;
       }
-      const arr=[];
-      for(let i=0;i<=maxCol;i++) arr.push(row[i]!==undefined?row[i]:null);
-      // Convertir números
-      rows.push(arr.map(v=>{
-        if(v===null||v==='') return null;
-        const n=Number(v);
-        return isNaN(n)?v:n;
-      }));
+      rows.push(Array.from({length: maxCol+1}, (_,i) => rowObj[i] ?? null));
     }
     return rows;
-  }catch(e){console.error('XLSX parse error:',e);return[]}
+  } catch(e) {
+    console.error('parseXLSX failed:', e);
+    return [];
+  }
 }
 
-function colToIdx(col){
-  let n=0;
-  for(let i=0;i<col.length;i++) n=n*26+(col.charCodeAt(i)-64);
-  return n-1;
-}
-
-function decodeXML(s){return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")}
-
-function readZip(bytes){
-  // Leer directorio central del ZIP
-  const entries={};
-  let i=0;
-  while(i<bytes.length-4){
-    if(bytes[i]===0x50&&bytes[i+1]===0x4B&&bytes[i+2]===0x03&&bytes[i+3]===0x04){
-      const compression=bytes[i+8]|(bytes[i+9]<<8);
-      const compSize=bytes[i+18]|(bytes[i+19]<<8)|(bytes[i+20]<<16)|(bytes[i+21]<<24);
-      const nameLen=bytes[i+26]|(bytes[i+27]<<8);
-      const extraLen=bytes[i+28]|(bytes[i+29]<<8);
-      const name=new TextDecoder().decode(bytes.slice(i+30,i+30+nameLen));
-      const dataStart=i+30+nameLen+extraLen;
-      const data=bytes.slice(dataStart,dataStart+compSize);
-      if(compression===0){entries[name]=data;}
-      else if(compression===8){
-        try{entries[name]=inflate(data);}catch(e){}
-      }
-      i=dataStart+compSize;
-    } else { i++; }
+async function readZipAsync(bytes) {
+  const entries = {};
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let i = 0;
+  while (i < bytes.length - 30) {
+    if (dv.getUint32(i, true) !== 0x04034b50) { i++; continue; }
+    const comp     = dv.getUint16(i+8,  true);
+    const compSz   = dv.getUint32(i+18, true);
+    const uncompSz = dv.getUint32(i+22, true);
+    const nameLen  = dv.getUint16(i+26, true);
+    const extraLen = dv.getUint16(i+28, true);
+    const name     = new TextDecoder().decode(bytes.slice(i+30, i+30+nameLen));
+    const dataStart = i + 30 + nameLen + extraLen;
+    const compData  = bytes.slice(dataStart, dataStart + compSz);
+    if (comp === 0) {
+      entries[name] = compData;
+    } else if (comp === 8) {
+      try { entries[name] = await inflateRawAsync(compData); }
+      catch(e) { console.warn('inflate failed:', name, e); }
+    }
+    i = dataStart + compSz;
   }
   return entries;
 }
 
-// Inflate mínimo usando DecompressionStream si disponible
-function inflate(data){
-  // Usar pako si disponible, sino intentar DecompressionStream
-  try{
-    const ds=new DecompressionStream('deflate-raw');
-    // Síncrono no es posible, usamos workaround
-    // Fallback: retornar data sin comprimir si falla
-  }catch(e){}
-  // Implementación básica de inflate para los XMLs del xlsx
-  return inflateRaw(data);
-}
-
-function inflateRaw(data){
-  // Mini inflate DEFLATE raw
-  const out=[];
-  let bp=0; // bit position
-  function rb(n){let v=0;for(let i=0;i<n;i++){const byte=Math.floor(bp/8);const bit=(bp%8);v|=((data[byte]>>bit)&1)<<i;bp++;}return v;}
-  
-  while(true){
-    const bfinal=rb(1);
-    const btype=rb(2);
-    if(btype===0){// no compression
-      bp=Math.ceil(bp/8)*8;
-      const len=data[bp/8]|(data[bp/8+1]<<8);
-      bp+=32;
-      for(let i=0;i<len;i++){out.push(data[bp/8+i]);} bp+=len*8;
-    } else if(btype===1||btype===2){
-      let litLen,dist;
-      if(btype===1){
-        litLen=buildFixedLitLen();dist=buildFixedDist();
-      } else {
-        const hlit=rb(5)+257,hdist=rb(5)+1,hclen=rb(4)+4;
-        const clenOrder=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
-        const clenLens=new Array(19).fill(0);
-        for(let i=0;i<hclen;i++)clenLens[clenOrder[i]]=rb(3);
-        const clenTree=buildTree(clenLens);
-        const allLens=[];
-        while(allLens.length<hlit+hdist){
-          const sym=decode(clenTree,rb,data);
-          if(sym<16)allLens.push(sym);
-          else if(sym===16){const rep=rb(2)+3;for(let i=0;i<rep;i++)allLens.push(allLens[allLens.length-1]);}
-          else if(sym===17){const rep=rb(3)+3;for(let i=0;i<rep;i++)allLens.push(0);}
-          else{const rep=rb(7)+11;for(let i=0;i<rep;i++)allLens.push(0);}
-        }
-        litLen=buildTree(allLens.slice(0,hlit));
-        dist=buildTree(allLens.slice(hlit));
-      }
-      while(true){
-        const sym=decode(litLen,rb,data);
-        if(sym===256)break;
-        if(sym<256){out.push(sym);}
-        else{
-          const lenBase=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
-          const lenExtra=[0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
-          const li=sym-257;
-          const len=lenBase[li]+rb(lenExtra[li]);
-          const dSym=decode(dist,rb,data);
-          const distBase=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
-          const distExtra=[0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
-          const d=distBase[dSym]+rb(distExtra[dSym]);
-          for(let i=0;i<len;i++)out.push(out[out.length-d]);
-        }
-      }
-    }
-    if(bfinal)break;
+async function inflateRawAsync(data) {
+  // Usa DecompressionStream nativo del browser
+  const ds = new DecompressionStream('deflate-raw');
+  const writer = ds.writable.getWriter();
+  const reader = ds.readable.getReader();
+  writer.write(data);
+  writer.close();
+  const chunks = [];
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    chunks.push(value);
   }
-  return new Uint8Array(out);
+  // Concatenar chunks
+  const total = chunks.reduce((n,c) => n+c.length, 0);
+  const out = new Uint8Array(total);
+  let pos = 0;
+  for (const c of chunks) { out.set(c, pos); pos += c.length; }
+  return out;
 }
 
-function buildFixedLitLen(){const l=new Array(288);for(let i=0;i<144;i++)l[i]=8;for(let i=144;i<256;i++)l[i]=9;for(let i=256;i<280;i++)l[i]=7;for(let i=280;i<288;i++)l[i]=8;return buildTree(l)}
-function buildFixedDist(){return buildTree(new Array(32).fill(5))}
-function buildTree(lens){
-  const maxBits=Math.max(...lens);
-  const blCount=new Array(maxBits+1).fill(0);
-  lens.forEach(l=>{if(l>0)blCount[l]++});
-  const nextCode=new Array(maxBits+2).fill(0);
-  for(let b=1;b<=maxBits;b++)nextCode[b+1]=(nextCode[b]+blCount[b])<<1;
-  const tree={};
-  lens.forEach((l,i)=>{if(l>0){const code=nextCode[l]++;let k='';for(let b=l-1;b>=0;b--)k+=(code>>b)&1;tree[k]=i;nextCode[l]--; /* fix */ }});
-  // Rebuild properly
-  const t2={};
-  const nc=new Array(maxBits+1).fill(0);
-  for(let b=1;b<=maxBits;b++)nc[b]=(nc[b-1]+blCount[b-1])<<1;
-  lens.forEach((l,i)=>{if(l>0){let code=nc[l]++;let k='';for(let b=l-1;b>=0;b--)k+=(code>>b)&1;t2[k]=i;}});
-  return t2;
+function deXML(s) {
+  return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(+n));
 }
-function decode(tree,rb,data){let k='';for(let i=0;i<20;i++){k+=rb(1);if(k in tree)return tree[k];}return 256;}
 
 // ── PARSE SALDOS desde filas ──
 function parseSaldos(sData){
