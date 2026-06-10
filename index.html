@@ -477,14 +477,24 @@ async function readZipAsync(bytes) {
 }
 
 async function inflateRaw(data) {
-  // Aseguramos una copia limpia de los bytes en memoria del navegador y compatibilidad con GitHub Pages
+  // Copiar a buffer limpio (byteOffset=0) — requerido por DecompressionStream en Chrome
   var clean = new Uint8Array(data.length);
   clean.set(data);
   var ds = new DecompressionStream('deflate-raw');
-  var response = new Response(clean);
-  var stream = response.body.pipeThrough(ds);
-  var buffer = await new Response(stream).arrayBuffer();
-  return new Uint8Array(buffer);
+  var writer = ds.writable.getWriter();
+  var reader = ds.readable.getReader();
+  await writer.write(clean);
+  await writer.close();
+  var chunks = [], total = 0;
+  while(true) {
+    var res = await reader.read();
+    if(res.done) break;
+    chunks.push(res.value);
+    total += res.value.length;
+  }
+  var out = new Uint8Array(total), pos = 0;
+  for(var c of chunks) { out.set(c, pos); pos += c.length; }
+  return out;
 }
 
 function deXML(s) {
