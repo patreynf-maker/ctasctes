@@ -203,7 +203,7 @@ td:nth-child(2){text-align:left;font-weight:500;max-width:190px;overflow:hidden;
 
 <!-- UPLOAD BANNER -->
 <div class="ubanner">
-  <div class="ub-txt" id="ub-txt">&#128193; Cargá los dos archivos exportados para ver los reportes</div>
+  <div class="ub-txt" id="ub-txt">&#128193; Cargá los archivos exportados del sistema (.xlsx y .txt)</div>
   <div class="ub-files">
     <label class="ubzone" id="uz1">
       <input type="file" accept=".xlsx,.xls,.txt,.csv,.tsv" id="fi1">
@@ -359,7 +359,7 @@ async function processFiles() {
       if(!fi) continue;
       var rows2, hi2, hdrs2;
       if(fi.type === 'xlsx') {
-        rows2 = await parseXLSX(fi.buf);
+        rows2 = parseXLSX(fi.buf);
         if(!rows2.length) { showErr('No se pudo leer el archivo XLSX: ' + fi.name); return; }
         hi2 = rows2.findIndex(function(r) { return r && r[0] !== null && (String(r[0]).trim() === 'Codigo' || String(r[0]).trim() === 'Código'); });
         if(hi2 < 0) { showErr('No se encontró encabezado "Codigo" en ' + fi.name); return; }
@@ -416,85 +416,193 @@ function mostrarApp() {
 
 function showErr(m) { document.getElementById('ub-err').textContent = m; }
 
-// ── PARSE XLSX async con DecompressionStream nativo ──
-async function parseXLSX(buf) {
+// ── PARSE XLSX — inflate JS puro (sin DecompressionStream, funciona en file://) ──
+function parseXLSX(buf) {
   try {
     var bytes = new Uint8Array(buf);
-    var entries = await readZipAsync(bytes);
-    console.log('ZIP entries:', Object.keys(entries));
-    var sharedStrings = [];
+    var entries = readZipEntries(bytes);
+    if(!Object.keys(entries).length) { console.error('ZIP vacío'); return []; }
+
+    // Shared strings
+    var ss = [];
     if(entries['xl/sharedStrings.xml']) {
-      var ssXml = new TextDecoder('utf-8').decode(entries['xl/sharedStrings.xml']);
-      sharedStrings = Array.from(ssXml.matchAll(/<si>([\s\S]*?)<\/si>/g)).map(function(m2) {
-        return Array.from(m2[1].matchAll(/<t[^>]*>([^<]*)<\/t>/g)).map(function(t){ return t[1]; }).join('');
-      }).map(deXML);
+      var ssXml = bytesToStr(entries['xl/sharedStrings.xml']);
+      var siRe = /<si>([\s\S]*?)<\/si>/g, sm;
+      while((sm = siRe.exec(ssXml)) !== null) {
+        var tRe = /<t[^>]*>([^<]*)<\/t>/g, tm, txt = '';
+        while((tm = tRe.exec(sm[1])) !== null) txt += tm[1];
+        ss.push(deXML(txt));
+      }
     }
+
+    // Sheet1
     var shRaw = entries['xl/worksheets/sheet1.xml'];
-    if(!shRaw) { console.error('No sheet1.xml'); return []; }
-    var shXml = new TextDecoder('utf-8').decode(shRaw);
+    if(!shRaw) { console.error('No sheet1.xml. Entries:', Object.keys(entries)); return []; }
+    var shXml = bytesToStr(shRaw);
     var rows = [];
-    for(var rm of shXml.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)) {
+    var rowRe = /<row[^>]*>([\s\S]*?)<\/row>/g, rm;
+    while((rm = rowRe.exec(shXml)) !== null) {
       var rowObj = {}, maxCol = 0;
-      for(var cm of rm[1].matchAll(/<c ([^>]*)>([\s\S]*?)<\/c>/g)) {
+      var cRe = /<c ([^>]*)>([\s\S]*?)<\/c>/g, cm;
+      while((cm = cRe.exec(rm[1])) !== null) {
         var refM = cm[1].match(/r="([A-Z]+)\d+"/);
         if(!refM) continue;
-        var ci = refM[1].split('').reduce(function(n,ch){ return n*26+(ch.charCodeAt(0)-64); }, 0) - 1;
-        maxCol = Math.max(maxCol, ci);
+        var ci = 0;
+        for(var li=0; li<refM[1].length; li++) ci = ci*26 + (refM[1].charCodeAt(li)-64);
+        ci--;
+        if(ci > maxCol) maxCol = ci;
         var ct = (cm[1].match(/t="([^"]+)"/) || [])[1] || '';
-        var vm2 = cm[2].match(/<v>([^<]*)<\/v>/);
+        var vm = cm[2].match(/<v>([^<]*)<\/v>/);
         var val = null;
-        if(vm2) val = ct==='s' ? (sharedStrings[+vm2[1]]||'') : (isNaN(+vm2[1]) ? vm2[1] : +vm2[1]);
+        if(vm) val = ct==='s' ? (ss[+vm[1]]||'') : (isNaN(+vm[1]) ? vm[1] : +vm[1]);
         rowObj[ci] = val;
       }
-      rows.push(Array.from({length:maxCol+1}, function(_,i){ return rowObj[i]!==undefined?rowObj[i]:null; }));
+      var arr = [];
+      for(var k=0; k<=maxCol; k++) arr.push(rowObj[k]!==undefined ? rowObj[k] : null);
+      rows.push(arr);
     }
     return rows;
   } catch(e) { console.error('parseXLSX error:', e); return []; }
 }
 
-async function readZipAsync(bytes) {
+function bytesToStr(bytes) {
+  // Decodificar UTF-8 correctamente — TextDecoder funciona en file:// sin restricciones
+  try {
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch(e) {
+    // Fallback: decodificación manual UTF-8
+    var out = '', i = 0;
+    while(i < bytes.length) {
+      var b = bytes[i];
+      if(b < 0x80) { out += String.fromCharCode(b); i++; }
+      else if((b & 0xE0) === 0xC0) {
+        out += String.fromCharCode(((b&0x1F)<<6)|(bytes[i+1]&0x3F)); i+=2;
+      } else if((b & 0xF0) === 0xE0) {
+        out += String.fromCharCode(((b&0x0F)<<12)|((bytes[i+1]&0x3F)<<6)|(bytes[i+2]&0x3F)); i+=3;
+      } else { i++; }
+    }
+    return out;
+  }
+}
+
+function readZipEntries(bytes) {
   var entries = {};
-  var dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   var i = 0;
   while(i < bytes.length - 30) {
-    if(dv.getUint32(i, true) !== 0x04034b50) { i++; continue; }
-    var comp    = dv.getUint16(i+8,  true);
-    var compSz  = dv.getUint32(i+18, true);
-    var nameLen = dv.getUint16(i+26, true);
-    var exLen   = dv.getUint16(i+28, true);
-    var name    = new TextDecoder().decode(bytes.slice(i+30, i+30+nameLen));
-    var ds      = i + 30 + nameLen + exLen;
-    var cdata   = bytes.slice(ds, ds+compSz);
+    // Local file header signature
+    if(bytes[i]!==0x50||bytes[i+1]!==0x4B||bytes[i+2]!==0x03||bytes[i+3]!==0x04) { i++; continue; }
+    var comp    = bytes[i+8]  | (bytes[i+9]<<8);
+    var compSz  = bytes[i+18] | (bytes[i+19]<<8) | (bytes[i+20]<<16) | (bytes[i+21]<<24);
+    var uncompSz= bytes[i+22] | (bytes[i+23]<<8) | (bytes[i+24]<<16) | (bytes[i+25]<<24);
+    var nameLen = bytes[i+26] | (bytes[i+27]<<8);
+    var exLen   = bytes[i+28] | (bytes[i+29]<<8);
+    var name    = '';
+    for(var n=0; n<nameLen; n++) name += String.fromCharCode(bytes[i+30+n]);
+    var ds = i + 30 + nameLen + exLen;
     if(comp === 0) {
-      entries[name] = cdata;
+      entries[name] = bytes.slice(ds, ds+compSz);
     } else if(comp === 8) {
-      try { entries[name] = await inflateRaw(cdata); }
-      catch(e) { console.warn('inflate failed for', name, e.message); }
+      try { entries[name] = jsInflate(bytes, ds, compSz, uncompSz); }
+      catch(e) { console.warn('inflate failed:', name, e.message); }
     }
-    i = ds + compSz;
+    i = ds + (compSz > 0 ? compSz : 1);
   }
   return entries;
 }
 
-async function inflateRaw(data) {
-  // Copiar a buffer limpio (byteOffset=0) — requerido por DecompressionStream en Chrome
-  var clean = new Uint8Array(data.length);
-  clean.set(data);
-  var ds = new DecompressionStream('deflate-raw');
-  var writer = ds.writable.getWriter();
-  var reader = ds.readable.getReader();
-  await writer.write(clean);
-  await writer.close();
-  var chunks = [], total = 0;
-  while(true) {
-    var res = await reader.read();
-    if(res.done) break;
-    chunks.push(res.value);
-    total += res.value.length;
+// ── INFLATE DEFLATE RAW — JS puro ──
+function jsInflate(src, offset, compLen, uncompLen) {
+  var out = new Uint8Array(uncompLen > 0 ? uncompLen : compLen * 4);
+  var outPos = 0;
+  var buf = 0, blen = 0, pos = offset;
+
+  function rb(n) {
+    while(blen < n) { buf |= src[pos++] << blen; blen += 8; }
+    var v = buf & ((1<<n)-1); buf >>>= n; blen -= n; return v;
   }
-  var out = new Uint8Array(total), pos = 0;
-  for(var c of chunks) { out.set(c, pos); pos += c.length; }
-  return out;
+  function align() { buf=0; blen=0; }
+
+  function grow() {
+    var n = new Uint8Array(out.length * 2);
+    n.set(out); out = n;
+  }
+  function write(b) { if(outPos>=out.length) grow(); out[outPos++]=b; }
+
+  // Tablas huffman
+  function buildTree(lens) {
+    var max=0;
+    for(var x=0;x<lens.length;x++) if(lens[x]>max) max=lens[x];
+    var bl=new Array(max+1).fill(0);
+    for(var x=0;x<lens.length;x++) if(lens[x]) bl[lens[x]]++;
+    var nc=new Array(max+2).fill(0);
+    for(var b=1;b<=max;b++) nc[b+1]=(nc[b]+bl[b])<<1;
+    var t={};
+    for(var x=0;x<lens.length;x++){
+      var l=lens[x]; if(!l) continue;
+      var c=nc[l]++, k='';
+      for(var b=l-1;b>=0;b--) k+=(c>>b)&1;
+      t[k]=x;
+    }
+    return t;
+  }
+  function hdec(tree) {
+    var k='';
+    for(var i=0;i<20;i++){k+=rb(1);if(k in tree)return tree[k];}
+    throw new Error('huffman decode failed');
+  }
+
+  var LB=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+  var LE=[0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+  var DB=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+  var DE=[0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+
+  function fixedLL(){
+    var l=new Array(288);
+    for(var i=0;i<144;i++)l[i]=8;for(var i=144;i<256;i++)l[i]=9;
+    for(var i=256;i<280;i++)l[i]=7;for(var i=280;i<288;i++)l[i]=8;
+    return buildTree(l);
+  }
+  function fixedD(){return buildTree(new Array(32).fill(5));}
+
+  var bfinal=0;
+  do {
+    bfinal=rb(1);
+    var btype=rb(2);
+    if(btype===0){
+      align();
+      var len=src[pos]|(src[pos+1]<<8); pos+=4;
+      for(var k=0;k<len;k++) write(src[pos++]);
+    } else {
+      var ll,dt;
+      if(btype===1){ ll=fixedLL(); dt=fixedD(); }
+      else {
+        var hlit=rb(5)+257, hdist=rb(5)+1, hclen=rb(4)+4;
+        var CLO=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+        var cl=new Array(19).fill(0);
+        for(var i=0;i<hclen;i++) cl[CLO[i]]=rb(3);
+        var ct=buildTree(cl), al=[];
+        while(al.length<hlit+hdist){
+          var s=hdec(ct);
+          if(s<16) al.push(s);
+          else if(s===16){var r=rb(2)+3;for(var i=0;i<r;i++)al.push(al[al.length-1]);}
+          else if(s===17){var r=rb(3)+3;for(var i=0;i<r;i++)al.push(0);}
+          else{var r=rb(7)+11;for(var i=0;i<r;i++)al.push(0);}
+        }
+        ll=buildTree(al.slice(0,hlit)); dt=buildTree(al.slice(hlit));
+      }
+      while(true){
+        var s=hdec(ll);
+        if(s===256) break;
+        if(s<256){ write(s); }
+        else {
+          var li=s-257, len2=LB[li]+rb(LE[li]);
+          var di=hdec(dt), dist=DB[di]+rb(DE[di]);
+          for(var k=0;k<len2;k++) write(out[outPos-dist]);
+        }
+      }
+    }
+  } while(!bfinal);
+  return out.slice(0,outPos);
 }
 
 function deXML(s) {
@@ -678,6 +786,9 @@ function renderT() {
   });
   data.sort(function(a,b) {
     var av=a[sortCol], bv=b[sortCol];
+    // Para cod y campos que parecen números, ordenar numéricamente
+    var an=parseFloat(av), bn=parseFloat(bv);
+    if(!isNaN(an) && !isNaN(bn)) return sortDir*(an-bn);
     if(typeof av==='string') return sortDir*(av||'').localeCompare(bv||'');
     return sortDir*((bv||0)-(av||0));
   });
