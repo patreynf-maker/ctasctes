@@ -6,11 +6,19 @@
 <title>Cuentas Corrientes — Quequen 554 SA</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{\n  --az:#003DA5;--azc:#E6F1FB;--azm:#185FA5;\n  --rj:#A32D2D;--rjc:#FCEBEB;\n  --nr:#854F0B;--nrc:#FAEEDA;\n  --vd:#3B6D11;--vdc:#EAF3DE;\n  --mo:#6B21A8;--moc:#F3E8FF;\n  --bg:#F4F4F2;--bd:#E0DED8;--ts:#6B6B68;\n  --ng:#1A1A18;--bl:#FFFFFF;--r:10px;--rs:6px;\n}
+:root{
+  --az:#003DA5;--azc:#E6F1FB;--azm:#185FA5;
+  --rj:#A32D2D;--rjc:#FCEBEB;
+  --nr:#854F0B;--nrc:#FAEEDA;
+  --vd:#3B6D11;--vdc:#EAF3DE;
+  --mo:#6B21A8;--moc:#F3E8FF;
+  --bg:#F4F4F2;--bd:#E0DED8;--ts:#6B6B68;
+  --ng:#1A1A18;--bl:#FFFFFF;--r:10px;--rs:6px;
+}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ng);font-size:13px;line-height:1.5;min-height:100vh}
 
 /* HEADER */
-.hdr{background:var(--bl);border-bottom:1px solid var(--bd);padding:0 16px;display:flex;align-items:center;justify-content:between;height:48px;position:sticky;top:0;z-index:100}
+.hdr{background:var(--bl);border-bottom:1px solid var(--bd);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:48px;position:sticky;top:0;z-index:100}
 .brand{font-size:14px;font-weight:700;color:var(--az);display:flex;align-items:center;gap:6px}
 .pills{display:flex;gap:4px;margin-left:24px}
 .pill{background:none;border:none;padding:6px 12px;font-size:12px;font-weight:600;color:var(--ts);cursor:pointer;border-radius:var(--rs);transition:0.15s}
@@ -42,7 +50,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .page{display:none;padding:0 16px 32px 16px}
 .page.on{display:block}
 .tb{background:var(--bl);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:16px;overflow:hidden}
-.tb-hdr{padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:between;background:var(--bl)}
+.tb-hdr{padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;background:var(--bl)}
 .tb-title{font-size:13px;font-weight:700;color:var(--ng)}
 .search-box{padding:8px 16px;background:var(--bg);border-bottom:1px solid var(--bd);display:flex;gap:8px}
 .search-box input{width:100%;max-width:300px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--rs);font-size:12px}
@@ -78,6 +86,8 @@ tr:hover td{background:#FAFAFA}
 .det-lbl{font-size:10px;font-weight:700;color:var(--ts);text-transform:uppercase}
 .det-val{font-size:13px;font-weight:600}
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.0/umd/index.js"></script>
 </head>
 <body>
 
@@ -95,11 +105,11 @@ tr:hover td{background:#FAFAFA}
   <div class="ub-txt" id="ub-txt">&#128193; Cargá los archivos exportados del sistema (.xlsx y .txt)</div>
   <div class="ub-files">
     <label class="ubzone" id="uz1">
-      <input type="file" accept=".xlsx,.xls,.txt,.csv,.tsv" id="f-xlsx" onchange="fileHandled('xlsx')">
+      <input type="file" accept=".xlsx,.xls" id="f-xlsx" onchange="fileHandled('xlsx')">
       <span>&#128196; Saldos (.xlsx)</span>
     </label>
     <label class="ubzone" id="uz2">
-      <input type="file" accept=".txt,.csv,.tsv" id="f-txt" onchange="fileHandled('txt')">
+      <input type="file" accept=".txt" id="f-txt" onchange="fileHandled('txt')">
       <span>&#128196; Antigüedad (.txt)</span>
     </label>
     <button class="btn-proc" onclick="processFiles()">Procesar</button>
@@ -225,7 +235,6 @@ tr:hover td{background:#FAFAFA}
   </div>
 
   <div id="panel-facturador-resultado" style="display:none; grid-template-columns: 1fr 380px; gap:16px; margin-top:16px;">
-    
     <div class="tb">
       <div class="tb-hdr"><div class="tb-title">&#128342; Tramos Cronológicos Actuales del Cliente</div></div>
       <div class="tw">
@@ -266,7 +275,6 @@ tr:hover td{background:#FAFAFA}
     <div style="display:flex; flex-direction:column; gap:16px;">
       <div class="tb" style="padding:16px; background:var(--bl); display:flex; flex-direction:column; gap:12px;">
         <div class="tb-title" style="border-bottom:1px solid var(--bd); padding-bottom:8px;">&#129309; Resumen de Liquidación</div>
-        
         <div style="display:flex; justify-content:space-between; font-size:12px;">
           <span style="color:var(--ts);">Deuda Base Real Total:</span>
           <span id="liq-base-real" style="font-weight:600;">$ 0,00</span>
@@ -279,21 +287,17 @@ tr:hover td{background:#FAFAFA}
           <span style="color:var(--ts);">Días Financieros Adicionales:</span>
           <span id="liq-dias-cheque" style="font-weight:700; color:var(--mo);">0 días</span>
         </div>
-        
         <hr style="border:none; border-top:1px solid var(--bd);">
-        
         <div style="display:flex; justify-content:space-between; align-items:center; background:var(--rjc); padding:10px; border-radius:var(--rs);">
           <span style="font-weight:700; color:var(--rj); font-size:11px; text-transform:uppercase;">Nota de Débito (Intereses):</span>
           <span id="liq-monto-nd" style="font-size:16px; font-weight:800; color:var(--rj);">$ 0,00</span>
         </div>
-
         <div style="display:flex; justify-content:space-between; align-items:center; background:var(--azc); padding:10px; border-radius:var(--rs); margin-top:4px;">
           <span style="font-weight:700; color:var(--azm); font-size:11px; text-transform:uppercase;">Total a Cobrar Efectivo:</span>
           <span id="liq-total-cobrar" style="font-size:16px; font-weight:800; color:var(--azm);">$ 0,00</span>
         </div>
       </div>
     </div>
-
   </div>
 </div>
 
@@ -304,7 +308,6 @@ var dataFecha = "";
 var rawXLSX = null;
 var rawTXT = null;
 
-// Seteo inicial de fecha de cheque por defecto (hoy)
 document.getElementById('fecha-cheque').valueAsDate = new Date();
 
 function fileHandled(type) {
@@ -317,7 +320,7 @@ function fileHandled(type) {
 function processFiles() {
   var f1 = document.getElementById('f-xlsx').files[0];
   var f2 = document.getElementById('f-txt').files[0];
-  if(!f1 || !f2) { alert("Por favor, cargá ambos archivos requeridos."); return; }
+  if(!f1 || !f2) { alert("Por favor, cargá ambos archivos requeridos (.xlsx y .txt)."); return; }
 
   var r1 = new FileReader();
   r1.onload = function(e) {
@@ -349,11 +352,11 @@ function executeParsing() {
     showTab('tg');
   } catch(err) {
     console.error(err);
-    alert("Error al procesar la estructura interna de los archivos. Verificá los formatos.");
+    alert("Error al procesar la estructura interna de los archivos. Verificá que correspondan a las exportaciones originales.");
   }
 }
 
-// LECTOR XLSX SEGURO (MÉTODO ZIP SIN DEPENDENCIAS)
+// LECTOR XLSX ORIGINAL RESTAURADO (MÉTODO ZIP SEGURO)
 function parseXLSX(buffer) {
   var u8 = new Uint8Array(buffer);
   var eocd = -1;
@@ -366,6 +369,8 @@ function parseXLSX(buffer) {
 
   var pos = cdOffset;
   var sRows = "";
+  var sharedStrings = [];
+
   for(var f=0; f<filesCount; f++) {
     var sLen = u8[pos+28] | (u8[pos+29]<<8);
     var eLen = u8[pos+30] | (u8[pos+31]<<8);
@@ -384,12 +389,13 @@ function parseXLSX(buffer) {
       if(u8[localOffset+8] === 0) {
         for(var d=0; d<cSize; d++) outStr += String.fromCharCode(u8[dataPos+d]);
       } else {
-        outStr = window.fflate ? fflate.strFromU8(u8.subarray(dataPos, dataPos+cSize), true) : "";
-        if(!outStr) {
+        if(window.fflate) {
+          outStr = window.fflate.strFromU8(u8.subarray(dataPos, dataPos+cSize), true);
+        } else {
           for(var d=0; d<cSize; d++) outStr += String.fromCharCode(u8[dataPos+d]);
         }
       }
-      if(name === "xl/sharedStrings.xml") var sharedStrings = parseStrings(outStr);
+      if(name === "xl/sharedStrings.xml") sharedStrings = parseStrings(outStr);
       if(name === "xl/worksheets/sheet1.xml") sRows = outStr;
     }
     pos += 46 + sLen + eLen + cLen;
@@ -413,14 +419,12 @@ function parseXLSX(buffer) {
     while((cellM = cRx.exec(cellXml)) !== null) {
       var col = cellM[1]; var type = cellM[3]; var valMatch = /<v>([\s\S]*?)<\/v>/.exec(cellM[4]);
       var val = valMatch ? valMatch[1] : "";
-      if(type === "s" && sharedStrings) val = sharedStrings[parseInt(val)];
+      if(type === "s") val = sharedStrings[parseInt(val)];
       rData[col] = val;
     }
     rows.push(rData);
   }
 
-  // Mapear cabeceras y armar el objeto cliente inicial
-  var headers = rows[3] || {};
   for(var r=4; r<rows.length; r++) {
     var row = rows[r];
     if(!row.A) continue;
@@ -435,7 +439,7 @@ function parseXLSX(buffer) {
   }
 }
 
-// LECTOR DEL REPORTE DE ANTIGÜEDAD (.TXT EN TABS)
+// LECTOR DE REPORTE DE ANTIGÜEDAD (.TXT ORIGINAL)
 function parseAging(text) {
   var lines = text.split(/\r?\n/);
   lines.forEach(function(l) {
@@ -465,18 +469,15 @@ function cleanNum(s) {
   return isNaN(v) ? 0 : v;
 }
 
-// INTERFAZ DE NAVEGACIÓN
 function showTab(id) {
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); p.style.display='none'; });
   var el = document.getElementById(id);
   el.classList.add('on'); el.style.display='block';
-  
   document.querySelectorAll('.pill').forEach(function(p, i){
     p.classList.toggle('on', ['tg','tr','ti','tf'][i]===id);
   });
 }
 
-// ARMADO DE INDICADORES (KPIS)
 function buildKPI() {
   var t=0, m60=0, m30=0, dia=0;
   CL.forEach(function(c){
@@ -488,7 +489,6 @@ function buildKPI() {
   document.getElementById('kpi-dia').innerHTML = "$ " + dia.toLocaleString('es-AR',{minimumFractionDigits:2});
 }
 
-// RENDER TABLA GENERAL
 function renderGeneral() {
   var q = document.getElementById('q-tg').value.toLowerCase();
   var tbody = document.getElementById('tbody-tg');
@@ -497,7 +497,7 @@ function renderGeneral() {
     if(q && c.cod.toLowerCase().indexOf(q)===-1 && c.nom.toLowerCase().indexOf(q)===-1) return;
     var tr = document.createElement('tr');
     var m30 = c.mayor60 + c.d30_60;
-    tr.innerHTML = '<td class="t-left style=\"color:var(--ts)\">' + c.cod + '</td>' +
+    tr.innerHTML = '<td class="t-left" style="color:var(--ts)">' + c.cod + '</td>' +
       '<td class="t-left f-med">' + c.nom + '</td>' +
       '<td>$ ' + c.remPend.toLocaleString('es-AR',{minimumFractionDigits:2}) + '</td>' +
       '<td>$ ' + c.debitos.toLocaleString('es-AR',{minimumFractionDigits:2}) + '</td>' +
@@ -508,7 +508,6 @@ function renderGeneral() {
   });
 }
 
-// RENDER TABLA REPORTES CON FILTROS
 function filterReport(mode) {
   var tbody = document.getElementById('tbody-tr');
   tbody.innerHTML = "";
@@ -532,7 +531,6 @@ function filterReport(mode) {
   });
 }
 
-// VISTA INDIVIDUAL (PANEL LATERAL)
 function buildIndividualList() {
   var container = document.getElementById('ind-list');
   container.innerHTML = "";
@@ -569,17 +567,10 @@ function showIndividualDetail(c) {
   document.getElementById('p-d0').innerHTML = ((c.d0_15/s)*100).toFixed(1) + "%";
 }
 
-
-// ── MÓDULO INTEGRADO: FACTURADOR INDIVIDUAL AVANZADO ──
-
 function poblarSelectorFacturador() {
   var sel = document.getElementById('sel-fact-cliente');
   if(!sel) return;
-  
-  // Limpiar opciones previas manteniendo la primera
   sel.innerHTML = '<option value="">-- Elija un cliente para liquidar --</option>';
-  
-  // Filtrar y ordenar clientes que tengan saldos o deudas para liquidar
   CL.forEach(function(c) {
     if(c.saldoGral > 0 || c.mayor60 > 0 || c.d30_60 > 0) {
       var opt = document.createElement('option');
@@ -593,57 +584,40 @@ function poblarSelectorFacturador() {
 function toggleSeccionCheque() {
   var forma = document.getElementById('sel-forma-pago').value;
   var wrapper = document.getElementById('wrapper-fecha-cheque');
-  if(forma === 'cheque') {
-    wrapper.style.display = 'flex';
-  } else {
-    wrapper.style.display = 'none';
-  }
+  wrapper.style.display = (forma === 'cheque') ? 'flex' : 'none';
   calcularInteresIndividual();
 }
 
 function calcularInteresIndividual() {
   var codCliente = document.getElementById('sel-fact-cliente').value;
   var panel = document.getElementById('panel-facturador-resultado');
-  
-  if(!codCliente) {
-    panel.style.display = 'none';
-    return;
-  }
+  if(!codCliente) { panel.style.display = 'none'; return; }
   
   var c = CL.find(function(item){ return item.cod === codCliente; });
   if(!c) return;
   
-  // Mostrar panel de resultados
   panel.style.display = 'grid';
-  
-  // Cargar montos en la tabla visual de revisión
   document.getElementById('f-m60').innerHTML = "$ " + c.mayor60.toLocaleString('es-AR', {minimumFractionDigits:2});
   document.getElementById('f-d30').innerHTML = "$ " + c.d30_60.toLocaleString('es-AR', {minimumFractionDigits:2});
   document.getElementById('f-d15').innerHTML = "$ " + c.d15_30.toLocaleString('es-AR', {minimumFractionDigits:2});
   document.getElementById('f-d0').innerHTML  = "$ " + c.d0_15.toLocaleString('es-AR', {minimumFractionDigits:2});
   
-  // Calcular Base Imponible en función de las selecciones del usuario (checkboxes)
   var baseImponible = 0;
   if(document.getElementById('f-chk-m60').checked) baseImponible += c.mayor60;
   if(document.getElementById('f-chk-d30').checked) baseImponible += c.d30_60;
   if(document.getElementById('f-chk-d15').checked) baseImponible += c.d15_30;
   if(document.getElementById('f-chk-d0').checked)  baseImponible += c.d0_15;
   
-  // Parámetros de tasas
   var tasaMensual = parseFloat(document.getElementById('int-tasa-ind').value) / 100;
   if (isNaN(tasaMensual)) tasaMensual = 0;
   
-  // Cálculo de Días Financieros adicionales por Cheque Diferido
   var diasAdicionales = 0;
   var formaPago = document.getElementById('sel-forma-pago').value;
-  
   if(formaPago === 'cheque') {
     var fChequeVal = document.getElementById('fecha-cheque').value;
     if(fChequeVal) {
-      var hoy = new Date();
-      hoy.setHours(0,0,0,0);
+      var hoy = new Date(); hoy.setHours(0,0,0,0);
       var fCheque = new Date(fChequeVal + "T00:00:00");
-      
       var diferenciaTiempo = fCheque.getTime() - hoy.getTime();
       if(diferenciaTiempo > 0) {
         diasAdicionales = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
@@ -651,23 +625,17 @@ function calcularInteresIndividual() {
     }
   }
   
-  // Aplicación de Interés Proporcional Mensual (Tasa Base + Fracción del tiempo del Cheque)
-  // Si es efectivo: aplica tasa mensual simple sobre el tramo vencido.
-  // Si es cheque a 30 días: duplica el tiempo de exposición (el tramo vencido + los 30 días que tarda en cobrarse).
   var factorTiempo = 1 + (diasAdicionales / 30);
   var interesCalculado = baseImponible * tasaMensual * factorTiempo;
   if(interesCalculado < 0 || baseImponible <= 0) interesCalculado = 0;
-  
   var totalRecalculado = c.saldoGral + interesCalculado;
   
-  // Renderizar bloque de resumen financiero
   document.getElementById('liq-base-real').innerHTML = "$ " + c.saldoGral.toLocaleString('es-AR', {minimumFractionDigits:2});
   document.getElementById('liq-base-imp').innerHTML = "$ " + baseImponible.toLocaleString('es-AR', {minimumFractionDigits:2});
   document.getElementById('liq-dias-cheque').innerHTML = diasAdicionales + " días diferidos";
   document.getElementById('liq-monto-nd').innerHTML = "$ " + interesCalculado.toLocaleString('es-AR', {minimumFractionDigits:2});
   document.getElementById('liq-total-cobrar').innerHTML = "$ " + totalRecalculado.toLocaleString('es-AR', {minimumFractionDigits:2});
 }
-
 </script>
 </body>
 </html>
