@@ -239,10 +239,8 @@ td:nth-child(2){text-align:left;font-weight:500;max-width:190px;overflow:hidden;
     <div class="sw"><span class="si">&#128269;</span><input type="text" id="qi" placeholder="Buscar…" oninput="renderT()"></div>
     <button class="fb" id="fbv" onclick="togF('v')">&#9888; Vencidos +60</button>
     <button class="fb" id="fbe" onclick="togF('e')">&#128683; Excedidos CC</button>
-    <select class="ss" id="ssort" onchange="renderT()">
-      <option value="">— Ordenar —</option>
-    </select>
     <span class="tc" id="cnt"></span>
+    <button onclick="exportarGeneralExcel()" style="margin-left:auto;padding:7px 14px;border-radius:var(--rs);border:none;background:var(--vd);color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">&#128202; Exportar Excel</button>
   </div>
   <div class="tw">
     <table>
@@ -250,7 +248,7 @@ td:nth-child(2){text-align:left;font-weight:500;max-width:190px;overflow:hidden;
         <th style="width:90px">Acciones</th>
         <th class="sortable" data-col="cod">Cód.</th>
         <th class="sortable" data-col="nom">Cliente</th>
-        <th>Estado</th>
+        <th class="sortable" data-col="estado">Estado</th>
         <th class="sortable" data-col="d0_15">0–15 días</th>
         <th class="sortable" data-col="d15_30">15–30 días</th>
         <th class="sortable" data-col="d30_60">30–60 días</th>
@@ -262,11 +260,15 @@ td:nth-child(2){text-align:left;font-weight:500;max-width:190px;overflow:hidden;
         <th class="sortable" data-col="ult_vta">Últ. venta</th>
       </tr></thead>
       <tbody id="tbody-main"></tbody>
+      <tfoot id="tfoot-main"></tfoot>
     </table>
   </div>
 </div>
 
 <div class="page" id="tr">
+  <div style="padding:14px 20px 0;display:flex;justify-content:flex-end">
+    <button onclick="exportarReportesExcel()" style="padding:7px 14px;border-radius:var(--rs);border:none;background:var(--vd);color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">&#128202; Exportar Excel</button>
+  </div>
   <div class="rep-wrap" id="rep-content"></div>
 </div>
 
@@ -280,6 +282,7 @@ td:nth-child(2){text-align:left;font-weight:500;max-width:190px;overflow:hidden;
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.553 4.122 1.523 5.854L0 24l6.335-1.507A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.8 9.8 0 01-5.002-1.366l-.358-.213-3.76.895.952-3.667-.234-.376A9.79 9.79 0 012.182 12C2.182 6.57 6.57 2.182 12 2.182c5.43 0 9.818 4.388 9.818 9.818 0 5.43-4.388 9.818-9.818 9.818z"/></svg>
       Exportar para WhatsApp
     </button>
+    <button onclick="exportarIndividualExcel()" style="padding:7px 14px;border-radius:var(--rs);border:none;background:var(--vd);color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px">&#128202; Exportar Excel</button>
   </div>
   <div class="comp" id="comp-box"></div>
 </div>
@@ -312,7 +315,8 @@ td:nth-child(2){text-align:left;font-weight:500;max-width:190px;overflow:hidden;
       </select>
     </div>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:flex-end;">
-      <button onclick="exportarNotasDebitoCSV()" style="padding:8px 14px;border-radius:var(--rs);border:none;background:var(--vd);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">&#128197; Exportar CSV</button>
+      <button onclick="facCapturarImagen()" style="padding:8px 14px;border-radius:var(--rs);border:none;background:var(--azm);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">&#128247; Exportar como imagen</button>
+      <button onclick="exportarNotasDebitoExcel()" style="padding:8px 14px;border-radius:var(--rs);border:none;background:var(--vd);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">&#128202; Exportar Excel</button>
     </div>
   </div>
 
@@ -769,6 +773,204 @@ function fmtM(v) {
 }
 function pct(v,t){ return t===0?0:Math.round(Math.abs(v)/Math.abs(t)*100); }
 
+// ══════════════════════════════════════════════════════════
+// ── EXPORTAR A EXCEL (generador XLSX nativo, sin dependencias, funciona en file://) ──
+// ══════════════════════════════════════════════════════════
+var _crcTable = null;
+function _crcTabla() {
+  var table = new Uint32Array(256);
+  for (var n = 0; n < 256; n++) {
+    var c = n;
+    for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    table[n] = c >>> 0;
+  }
+  return table;
+}
+function _crc32(bytes) {
+  if (!_crcTable) _crcTable = _crcTabla();
+  var crc = 0xFFFFFFFF;
+  for (var i = 0; i < bytes.length; i++) crc = (_crcTable[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8)) >>> 0;
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function _u16b(n) { return [n & 0xFF, (n >> 8) & 0xFF]; }
+function _u32b(n) { return [n & 0xFF, (n >> 8) & 0xFF, (n >> 16) & 0xFF, (n >>> 24) & 0xFF]; }
+function _dosFecha(d) {
+  d = d || new Date();
+  var t = ((d.getHours() & 0x1F) << 11) | ((d.getMinutes() & 0x3F) << 5) | ((d.getSeconds() >> 1) & 0x1F);
+  var f = (((d.getFullYear() - 1980) & 0x7F) << 9) | (((d.getMonth() + 1) & 0xF) << 5) | (d.getDate() & 0x1F);
+  return { t: t, f: f };
+}
+function _crearZIP(files) {
+  var enc = new TextEncoder();
+  var dt = _dosFecha();
+  var locales = [], centrales = [], offset = 0;
+  files.forEach(function (fEntry) {
+    var nombre = enc.encode(fEntry.nombre);
+    var data = fEntry.data;
+    var crc = _crc32(data);
+    var localOffset = offset;
+    var lh = new Uint8Array([].concat(
+      _u32b(0x04034b50), _u16b(20), _u16b(0), _u16b(0),
+      _u16b(dt.t), _u16b(dt.f),
+      _u32b(crc), _u32b(data.length), _u32b(data.length),
+      _u16b(nombre.length), _u16b(0)
+    ));
+    locales.push(lh, nombre, data);
+    offset += lh.length + nombre.length + data.length;
+    var ch = new Uint8Array([].concat(
+      _u32b(0x02014b50), _u16b(20), _u16b(20), _u16b(0), _u16b(0),
+      _u16b(dt.t), _u16b(dt.f),
+      _u32b(crc), _u32b(data.length), _u32b(data.length),
+      _u16b(nombre.length), _u16b(0), _u16b(0), _u16b(0), _u16b(0),
+      _u32b(0), _u32b(localOffset)
+    ));
+    centrales.push(ch, nombre);
+  });
+  var centralStart = offset, centralSize = 0;
+  centrales.forEach(function (p) { centralSize += p.length; });
+  var eocd = new Uint8Array([].concat(
+    _u32b(0x06054b50), _u16b(0), _u16b(0),
+    _u16b(files.length), _u16b(files.length),
+    _u32b(centralSize), _u32b(centralStart), _u16b(0)
+  ));
+  var todas = locales.concat(centrales).concat([eocd]);
+  var total = 0; todas.forEach(function (p) { total += p.length; });
+  var out = new Uint8Array(total), pos = 0;
+  todas.forEach(function (p) { out.set(p, pos); pos += p.length; });
+  return out;
+}
+function _xmlEsc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function _colLetra(n) {
+  var s = '';
+  while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+  return s;
+}
+function _hojaXML(rows) {
+  var out = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'];
+  rows.forEach(function (row, ri) {
+    var r = ri + 1;
+    out.push('<row r="' + r + '">');
+    row.forEach(function (val, ci) {
+      var ref = _colLetra(ci + 1) + r;
+      if (val === null || val === undefined || val === '') return;
+      if (typeof val === 'number' && isFinite(val)) {
+        out.push('<c r="' + ref + '"><v>' + val + '</v></c>');
+      } else {
+        out.push('<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + _xmlEsc(val) + '</t></is></c>');
+      }
+    });
+    out.push('</row>');
+  });
+  out.push('</sheetData></worksheet>');
+  return out.join('');
+}
+function _crearXLSX(hojas) {
+  var enc = new TextEncoder();
+  var files = [];
+  files.push({ nombre: '[Content_Types].xml', data: enc.encode(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+    hojas.map(function (h, i) { return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join('') +
+    '</Types>' ) });
+  files.push({ nombre: '_rels/.rels', data: enc.encode(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    '</Relationships>' ) });
+  files.push({ nombre: 'xl/workbook.xml', data: enc.encode(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<sheets>' +
+    hojas.map(function (h, i) { return '<sheet name="' + _xmlEsc(h.nombre.slice(0, 31)) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join('') +
+    '</sheets></workbook>' ) });
+  files.push({ nombre: 'xl/_rels/workbook.xml.rels', data: enc.encode(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    hojas.map(function (h, i) { return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>'; }).join('') +
+    '<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+    '</Relationships>' ) });
+  files.push({ nombre: 'xl/styles.xml', data: enc.encode(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>' +
+    '<borders count="1"><border/></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>' +
+    '</styleSheet>' ) });
+  hojas.forEach(function (h, i) {
+    files.push({ nombre: 'xl/worksheets/sheet' + (i + 1) + '.xml', data: enc.encode(_hojaXML(h.filas)) });
+  });
+  return _crearZIP(files);
+}
+// nombreArchivo: 'Archivo.xlsx'; hojas: array de filas (una sola hoja) o [{nombre,filas}, ...]
+function descargarExcel(nombreArchivo, hojas) {
+  if (Array.isArray(hojas) && hojas.length && Array.isArray(hojas[0])) {
+    hojas = [{ nombre: 'Hoja1', filas: hojas }];
+  }
+  var bytes = _crearXLSX(hojas);
+  var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = nombreArchivo;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════════════
+// ── CAPTURAR UN ELEMENTO COMO IMAGEN PNG (sin dependencias externas, funciona offline) ──
+// ══════════════════════════════════════════════════════════
+function _capturarNodoComoPNG(node, nombreArchivo) {
+  return new Promise(function (resolve, reject) {
+    var rect = node.getBoundingClientRect();
+    var w = Math.ceil(rect.width) || node.scrollWidth || 400;
+    var h = Math.ceil(rect.height) || node.scrollHeight || 400;
+    var css = '';
+    var estilos = document.querySelectorAll('style');
+    for (var i = 0; i < estilos.length; i++) css += estilos[i].textContent + '\n';
+    var html = node.outerHTML;
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">' +
+      '<foreignObject x="0" y="0" width="' + w + '" height="' + h + '">' +
+      '<div xmlns="http://www.w3.org/1999/xhtml" style="width:' + w + 'px;height:' + h + 'px;background:#fff;">' +
+      '<style>' + css + '</style>' + html +
+      '</div></foreignObject></svg>';
+    var svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    var url = URL.createObjectURL(svgBlob);
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var escala = 2;
+        var canvas = document.createElement('canvas');
+        canvas.width = w * escala; canvas.height = h * escala;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.scale(escala, escala);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(function (blob) {
+          if (!blob) { reject(new Error('No se pudo generar la imagen')); return; }
+          if (nombreArchivo) {
+            var a = document.createElement('a'), u = URL.createObjectURL(blob);
+            a.href = u; a.download = nombreArchivo;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(u);
+          }
+          resolve(blob);
+        }, 'image/png', 1.0);
+      } catch (e) { reject(e); }
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('No se pudo renderizar la imagen')); };
+    img.src = url;
+  });
+}
+
 // ── TABS ──
 function showTab(id) {
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); p.style.display='none'; });
@@ -808,6 +1010,16 @@ function togF(k) {
   renderT();
 }
 
+function statusRank(c) {
+  var p = c.aut>0 ? c.saldoGral/c.aut : 0;
+  if(c.mayor60>0)              return 5;
+  if(c.aut>0&&c.saldoGral>c.aut) return 4;
+  if(p>.9)                     return 3;
+  if(p>.7)                     return 2;
+  if(c.saldoGral<=0)           return 1;
+  return 0;
+}
+
 function statusBadge(c) {
   var p = c.aut>0 ? c.saldoGral/c.aut : 0;
   if(c.mayor60>0)              return '<span class="badge br">Vencido +60</span>';
@@ -833,6 +1045,7 @@ function renderT() {
     return true;
   });
   data.sort(function(a,b) {
+    if(sortCol === 'estado') return sortDir*(statusRank(a)-statusRank(b));
     var av=a[sortCol], bv=b[sortCol];
     // Para cod y campos que parecen números, ordenar numéricamente
     var an=parseFloat(av), bn=parseFloat(bv);
@@ -846,6 +1059,48 @@ function renderT() {
   document.getElementById('cnt').textContent = vis.length + ' visibles' + (ocu.length?' · '+ocu.length+' ocultos':'');
   var rows = data.map(function(c) { return makeRow(c); });
   document.getElementById('tbody-main').innerHTML = rows.join('');
+  window._tgFiltrados = data;
+  renderTotalGeneral(vis);
+}
+
+function renderTotalGeneral(vis) {
+  var t = vis.reduce(function(a,c){
+    a.d0_15+=(c.d0_15||0); a.d15_30+=(c.d15_30||0); a.d30_60+=(c.d30_60||0); a.mayor60+=(c.mayor60||0);
+    a.saldo+=(c.saldo||0); a.rem+=(c.rem||0); a.saldoGral+=(c.saldoGral||0);
+    return a;
+  }, {d0_15:0,d15_30:0,d30_60:0,mayor60:0,saldo:0,rem:0,saldoGral:0});
+  window._tgTotales = t;
+  var tf = document.getElementById('tfoot-main');
+  if(!tf) return;
+  tf.innerHTML = '<tr style="font-weight:700;background:var(--bg);border-top:2px solid var(--bd)">' +
+    '<td colspan="4" style="text-align:right;padding-right:12px;border-left:none">Total ('+vis.length+' clientes visibles)</td>' +
+    '<td>'+fmt(t.d0_15)+'</td>' +
+    '<td>'+fmt(t.d15_30)+'</td>' +
+    '<td>'+fmt(t.d30_60)+'</td>' +
+    '<td>'+fmt(t.mayor60)+'</td>' +
+    '<td>'+fmt(t.saldo)+'</td>' +
+    '<td>'+fmt(t.rem)+'</td>' +
+    '<td>'+fmt(t.saldoGral)+'</td>' +
+    '<td></td><td></td>' +
+  '</tr>';
+}
+
+function exportarGeneralExcel() {
+  var data = window._tgFiltrados || CL;
+  var t = window._tgTotales || {d0_15:0,d15_30:0,d30_60:0,mayor60:0,saldo:0,rem:0,saldoGral:0};
+  var filas = [
+    ['Cód.','Cliente','Estado','0–15 días','15–30 días','30–60 días','+60 días','Saldo FC','Rem. s/FC','Saldo total','Límite CC','Últ. venta']
+  ];
+  data.forEach(function(c){
+    var oc = ocultos.has(String(c.cod));
+    filas.push([
+      c.cod, c.nom, oc?'Oculto':(c.aut>0&&c.saldoGral>c.aut?'Excedido':c.mayor60>0?'Vencido +60':'Al día'),
+      c.d0_15||0, c.d15_30||0, c.d30_60||0, c.mayor60||0, c.saldo||0, c.rem||0, c.saldoGral||0, c.aut||0, c.ult_vta||''
+    ]);
+  });
+  filas.push([]);
+  filas.push(['TOTAL', '', '', t.d0_15, t.d15_30, t.d30_60, t.mayor60, t.saldo, t.rem, t.saldoGral, '', '']);
+  descargarExcel('CuentasCorrientes_General_' + new Date().toISOString().slice(0,10) + '.xlsx', filas);
 }
 
 function makeRow(c) {
@@ -1025,6 +1280,53 @@ function buildReportes() {
     '</div>';
 }
 
+function exportarReportesExcel() {
+  var CLA = CL.filter(function(c){ return !ocultos.has(String(c.cod)); });
+  var tot = CLA.reduce(function(a,c){return a+c.saldoGral;},0);
+  var ven = CLA.reduce(function(a,c){return a+(c.mayor60>0?c.mayor60:0);},0);
+  var d30 = CLA.reduce(function(a,c){return a+(c.d30_60>0?c.d30_60:0);},0);
+  var d15 = CLA.reduce(function(a,c){return a+(c.d15_30>0?c.d15_30:0);},0);
+  var d0  = CLA.reduce(function(a,c){return a+(c.d0_15>0?c.d0_15:0);},0);
+  var top10  = CLA.filter(function(c){return c.saldoGral>0;}).sort(function(a,b){return b.saldoGral-a.saldoGral;}).slice(0,10);
+  var top10v = CLA.filter(function(c){return c.mayor60>0;}).sort(function(a,b){return b.mayor60-a.mayor60;}).slice(0,10);
+  var alertas= CLA.filter(function(c){return c.mayor60>0||(c.aut>0&&c.saldoGral/c.aut>0.7);})
+    .sort(function(a,b){
+      var sa=(a.mayor60>0?3:0)+(a.aut>0&&a.saldoGral>a.aut?2:0);
+      var sb=(b.mayor60>0?3:0)+(b.aut>0&&b.saldoGral>b.aut?2:0);
+      return sb-sa||b.saldoGral-a.saldoGral;
+    });
+
+  var resumen = [
+    ['Resumen de cartera',''],
+    ['Total en cartera', tot],
+    ['0–15 días', d0],
+    ['15–30 días', d15],
+    ['30–60 días', d30],
+    ['Vencido +60 días', ven],
+    ['Clientes activos (visibles)', CLA.length]
+  ];
+
+  var topDeudores = [['#','Código','Cliente','Saldo total','% del total']];
+  top10.forEach(function(c,i){ topDeudores.push([i+1, c.cod, c.nom, c.saldoGral, pct(c.saldoGral,tot)]); });
+
+  var topVencidos = [['#','Código','Cliente','Vencido +60 días']];
+  top10v.forEach(function(c,i){ topVencidos.push([i+1, c.cod, c.nom, c.mayor60]); });
+
+  var alertasHoja = [['Cliente','Saldo total','Vencido +60','Límite CC','% Usado','Estado']];
+  alertas.forEach(function(c){
+    var p = c.aut>0?Math.round(c.saldoGral/c.aut*100):0;
+    var lbl = c.aut>0&&c.saldoGral>c.aut?'Excedido':c.mayor60>0?'Vencido +60':'Atención';
+    alertasHoja.push([c.nom, c.saldoGral, c.mayor60, c.aut, c.aut>0?p:'', lbl]);
+  });
+
+  descargarExcel('CuentasCorrientes_Reportes_' + new Date().toISOString().slice(0,10) + '.xlsx', [
+    { nombre: 'Resumen', filas: resumen },
+    { nombre: 'Top deudores', filas: topDeudores },
+    { nombre: 'Top vencidos +60', filas: topVencidos },
+    { nombre: 'Alertas', filas: alertasHoja }
+  ]);
+}
+
 // ── INDIVIDUAL ──
 function buildSelect() {
   var sel = document.getElementById('dsel');
@@ -1067,6 +1369,41 @@ function renderD() {
     '<div class="lblock" style="background:'+bgc+'"><div class="lt" style="color:'+bc+'">&#127974; Límite de cuenta corriente</div><div class="lcs"><div class="lc"><div class="lcl">% Utilizado</div><div class="lcv" style="color:'+bc+';font-size:24px">'+p+'%</div></div><div class="lc"><div class="lcl">Límite total</div><div class="lcv" style="color:'+bc+'">'+fmt(c.aut)+'</div></div><div class="lc"><div class="lcl">Deuda acumulada</div><div class="lcv" style="color:'+bc+'">'+fmt(c.saldoGral)+'</div></div><div class="lc"><div class="lcl">'+(cr>=0?'Disponible':'Excedido en')+'</div><div class="lcv" style="color:'+(cr>=0?'#3B6D11':'#A32D2D')+'">'+fmt(Math.abs(cr))+'</div></div></div><div class="lbw"><div class="lbf" style="width:'+Math.min(p,100)+'%;background:'+bc+'">'+(p>15?'<span>'+fmt(c.saldoGral)+'</span>':'')+'</div></div><div class="lbl2"><span>$ 0</span><span>'+fmt(c.aut)+'</span></div><span class="les" style="background:'+bc+'"><span style="width:7px;height:7px;border-radius:50%;background:#fff;opacity:.7;display:inline-block"></span>'+lbl+'</span></div>' +
     '<div class="ab"><div class="at">Saldo por antigüedad</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+aging4+'</div><div style="display:flex;justify-content:space-between;align-items:center;background:#F4F4F2;border-radius:8px;padding:10px 14px"><div style="font-size:11px;color:#6B6B68;font-weight:500">Total</div><div style="font-size:15px;font-weight:700">'+fmt(c.saldoGral)+'</div></div></div>' +
     '<div class="comp-foot"><div><div class="fl">Última venta</div><div class="fv">'+(c.ult_vta||'—')+'</div></div><div><div class="fl">Último pago</div><div class="fv">'+(c.ult_pago||'—')+'</div></div><div style="text-align:right"><div class="fl">Estado de cuenta</div><div class="fv" style="color:'+bc+'">'+lbl+'</div></div></div>';
+}
+
+function exportarIndividualExcel() {
+  var c = CL[+document.getElementById('dsel').value];
+  if(!c) return;
+  var cr = c.aut - c.saldoGral;
+  var p  = c.aut>0 ? Math.round(c.saldoGral/c.aut*100) : 0;
+  var lbl= c.aut>0&&c.saldoGral>c.aut?'Excedido':p>=100?'Límite alcanzado':p>90?'Casi al límite':p>70?'Atención':c.mayor60>0?'Vencido +60 días':'Al día';
+  var filas = [
+    ['Estado de cuenta corriente', ''],
+    ['Cliente', c.nom],
+    ['Código', c.cod],
+    ['CUIT', c.cuit||''],
+    ['Dirección', (c.dir||'') + (c.cp&&c.cp!='0'?', CP '+c.cp:'') + (c.loc?' — '+c.loc:'')],
+    ['Fecha', new Date().toLocaleDateString('es-AR')],
+    [],
+    ['Deuda facturada', c.saldo||0],
+    ['Saldo total', c.saldoGral||0],
+    ['Pendiente de facturación', c.rem||0],
+    ['Crédito disponible', cr],
+    [],
+    ['Límite de cuenta corriente', c.aut||0],
+    ['% Utilizado', c.aut>0?p:0],
+    ['Estado', lbl],
+    [],
+    ['Saldo por antigüedad', ''],
+    ['0–15 días', c.d0_15||0],
+    ['15–30 días', c.d15_30||0],
+    ['30–60 días', c.d30_60||0],
+    ['+60 días', c.mayor60||0],
+    [],
+    ['Última venta', c.ult_vta||''],
+    ['Último pago', c.ult_pago||'']
+  ];
+  descargarExcel('EstadoCuenta_' + c.nom.replace(/[^a-zA-Z0-9]/g,'_').slice(0,28) + '_' + new Date().toISOString().slice(0,10) + '.xlsx', filas);
 }
 
 // ── EXPORTAR WHATSAPP ──
@@ -1123,17 +1460,11 @@ async function exportWA() {
     '<div style="padding:7px 18px;text-align:center;background:#003DA5"><div style="font-size:10px;color:rgba(255,255,255,.6)">Quequen 554 SA · YPF · '+hoy+'</div></div>';
   document.body.appendChild(wrap);
   try {
-    var canvas = await html2canvas(wrap, {scale:2.5, useCORS:false, allowTaint:true, backgroundColor:'#ffffff', width:W, windowWidth:W, logging:false});
-    canvas.toBlob(function(blob) {
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url; a.download = 'EstadoCuenta_'+c.nom.replace(/[^a-zA-Z0-9]/g,'_').slice(0,28)+'_'+hoy.replace(/\//g,'-')+'.png';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-      btn.textContent = '✓ Descargada'; btn.style.background = '#3B6D11';
-      setTimeout(function(){ btn.innerHTML=orig; btn.style.background=''; btn.disabled=false; }, 2500);
-    }, 'image/png', 1.0);
+    await _capturarNodoComoPNG(wrap, 'EstadoCuenta_'+c.nom.replace(/[^a-zA-Z0-9]/g,'_').slice(0,28)+'_'+hoy.replace(/\//g,'-')+'.png');
+    btn.textContent = '✓ Descargada'; btn.style.background = '#3B6D11';
+    setTimeout(function(){ btn.innerHTML=orig; btn.style.background=''; btn.disabled=false; }, 2500);
   } catch(e) {
-    console.error('html2canvas error:', e);
+    console.error('exportWA error:', e);
     btn.textContent = '⚠ Error'; btn.disabled = false;
     setTimeout(function(){ btn.innerHTML=orig; btn.disabled=false; }, 2000);
   } finally { document.body.removeChild(wrap); }
@@ -1636,7 +1967,17 @@ function facToggleTramo(key) {
 }
 
 // Guardar último cálculo para exportar
-function exportarNotasDebitoCSV() {
+function facCapturarImagen() {
+  var sel = document.getElementById('fac-sel-cliente');
+  if (!sel || !sel.value) { alert('Seleccioná un cliente primero.'); return; }
+  var node = document.getElementById('fac-body');
+  if (!node) return;
+  var cod = sel.value;
+  _capturarNodoComoPNG(node, 'Facturador_' + cod + '_' + new Date().toISOString().slice(0,10) + '.png')
+    .catch(function(e){ console.error('facCapturarImagen error:', e); alert('No se pudo generar la imagen.'); });
+}
+
+function exportarNotasDebitoExcel() {
   var sel = document.getElementById('fac-sel-cliente');
   if (!sel || !sel.value) { alert('Seleccioná un cliente primero.'); return; }
   var cod = sel.value;
@@ -1659,8 +2000,8 @@ function exportarNotasDebitoCSV() {
   var cheques = (forma === 'cheque') ? (window._facCheques || []).filter(function(c){return c.monto>0 && c.fecha;}) : [];
   var datosCheques = facDatosCheques();
 
-  var csvContent = "data:text/csv;charset=utf-8,";
-  csvContent += "Codigo;Cliente;Forma de pago;Tramo;Seleccionado para cobrar;Saldo;Dias efectivos;Interes;Total\n";
+  var filas = [];
+  filas.push(['Codigo','Cliente','Forma de pago','Tramo','Seleccionado para cobrar','Saldo','Dias efectivos','Interes','Total']);
 
   var totalDeudaSel = 0, totalInteresSel = 0, totalDeudaNoSel = 0;
   var tramosSeleccionados = [];
@@ -1673,59 +2014,54 @@ function exportarNotasDebitoCSV() {
     var interes = checked ? (saldo * tasaDiaria * diasEfectivos) : 0;
     if (checked) { totalDeudaSel += saldo; totalInteresSel += interes; tramosSeleccionados.push(tr); }
     else { totalDeudaNoSel += saldo; }
-    csvContent += [cod, cliente.nom, forma, tr.label, (checked?'SI':'NO'),
-      saldo.toFixed(2), diasEfectivos, interes.toFixed(2), (saldo+interes).toFixed(2)].join(';') + '\n';
+    filas.push([cod, cliente.nom, forma, tr.label, (checked?'SI':'NO'),
+      saldo, diasEfectivos, +interes.toFixed(2), +(saldo+interes).toFixed(2)]);
   });
 
   var saldoOriginalCC = cliente.saldoGral || 0;
   var saldoRestanteCC = saldoOriginalCC - totalDeudaSel;
 
-  csvContent += "\n";
-  csvContent += "Resumen;;;;;;;;\n";
-  csvContent += "Saldo CC antes;" + saldoOriginalCC.toFixed(2) + "\n";
-  csvContent += "Deuda cobrada ahora;" + totalDeudaSel.toFixed(2) + "\n";
-  csvContent += "Interes Nota de Debito;" + totalInteresSel.toFixed(2) + "\n";
-  csvContent += "Total a cobrar ahora;" + (totalDeudaSel+totalInteresSel).toFixed(2) + "\n";
-  csvContent += "Pendiente sin seleccionar;" + totalDeudaNoSel.toFixed(2) + "\n";
-  csvContent += "Saldo restante en CC;" + saldoRestanteCC.toFixed(2) + "\n";
+  filas.push([]);
+  filas.push(['Resumen']);
+  filas.push(['Saldo CC antes', saldoOriginalCC]);
+  filas.push(['Deuda cobrada ahora', totalDeudaSel]);
+  filas.push(['Interes Nota de Debito', +totalInteresSel.toFixed(2)]);
+  filas.push(['Total a cobrar ahora', +(totalDeudaSel+totalInteresSel).toFixed(2)]);
+  filas.push(['Pendiente sin seleccionar', totalDeudaNoSel]);
+  filas.push(['Saldo restante en CC', saldoRestanteCC]);
 
   if (cheques.length) {
     var hoyX = new Date(); hoyX.setHours(0,0,0,0);
-    csvContent += "\n";
-    csvContent += "Cheques entregados;;;;;;;;\n";
-    csvContent += "N;Monto;Fecha de cobro;Dias hasta cobro\n";
+    filas.push([]);
+    filas.push(['Cheques entregados']);
+    filas.push(['N','Monto','Fecha de cobro','Dias hasta cobro']);
     cheques.forEach(function(ch, i) {
       var f = new Date(ch.fecha + 'T00:00:00');
       var d = Math.round((f - hoyX) / (1000*60*60*24));
-      csvContent += [(i+1), ch.monto.toFixed(2), ch.fecha, d].join(';') + '\n';
+      filas.push([i+1, ch.monto, ch.fecha, d]);
     });
-    csvContent += "Total cheques;" + datosCheques.totalCheques.toFixed(2) + "\n";
-    csvContent += "Dias promedio de fechas;" + datosCheques.diasPromedio + "\n";
+    filas.push(['Total cheques', +datosCheques.totalCheques.toFixed(2)]);
+    filas.push(['Dias promedio de fechas', datosCheques.diasPromedio]);
 
     // Asignación FIFO: más antiguo primero
     var ordenFIFO = tramosSeleccionados.slice().sort(function(a,b){ return b.dias - a.dias; });
     var restante = datosCheques.totalCheques;
-    csvContent += "\n";
-    csvContent += "Asignacion de cheques a deuda (mas antiguo primero);;;;;;;;\n";
-    csvContent += "Tramo;Saldo del tramo;Cubierto con cheques;Pendiente\n";
+    filas.push([]);
+    filas.push(['Asignacion de cheques a deuda (mas antiguo primero)']);
+    filas.push(['Tramo','Saldo del tramo','Cubierto con cheques','Pendiente']);
     ordenFIFO.forEach(function(tr) {
       var saldoTramo = cliente[tr.campo];
       var aplicado = Math.min(restante, saldoTramo);
       var pendiente = saldoTramo - aplicado;
       restante -= aplicado;
-      csvContent += [tr.label, saldoTramo.toFixed(2), aplicado.toFixed(2), pendiente.toFixed(2)].join(';') + '\n';
+      filas.push([tr.label, saldoTramo, +aplicado.toFixed(2), +pendiente.toFixed(2)]);
     });
     if (restante > 0) {
-      csvContent += "Excedente de cheques (no aplicado);" + restante.toFixed(2) + "\n";
+      filas.push(['Excedente de cheques (no aplicado)', +restante.toFixed(2)]);
     }
   }
 
-  var link = document.createElement('a');
-  link.setAttribute('href', encodeURI(csvContent));
-  link.setAttribute('download', 'NotaDebito_' + cod + '_' + new Date().toISOString().slice(0,10) + '.csv');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  descargarExcel('NotaDebito_' + cod + '_' + new Date().toISOString().slice(0,10) + '.xlsx', filas);
 }
 
 </script>
