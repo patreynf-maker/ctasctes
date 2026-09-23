@@ -249,7 +249,7 @@ td:nth-child(2){text-align:left;font-weight:500;max-width:190px;overflow:hidden;
         <th class="sortable" data-col="cod">Cód.</th>
         <th class="sortable" data-col="nom">Cliente</th>
         <th class="sortable" data-col="estado">Estado</th>
-        <th class="sortable" data-col="d0_15">0–15 días</th>
+        <th class="sortable" data-col="d0_15" title="Saldo facturado 0–15 días (sin remitos pendientes de facturar)">0–15 días</th>
         <th class="sortable" data-col="d15_30">15–30 días</th>
         <th class="sortable" data-col="d30_60">30–60 días</th>
         <th class="sortable" data-col="mayor60">+60 días</th>
@@ -285,6 +285,14 @@ td:nth-child(2){text-align:left;font-weight:500;max-width:190px;overflow:hidden;
     <button onclick="exportarIndividualExcel()" style="padding:7px 14px;border-radius:var(--rs);border:none;background:var(--vd);color:#fff;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px">&#128202; Exportar Excel</button>
   </div>
   <div class="comp" id="comp-box"></div>
+  <div style="max-width:640px;margin:16px auto 40px;background:var(--bl);border:1px solid var(--bd);border-radius:var(--rs);padding:16px 18px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap;">
+      <div style="font-size:12px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.3px;">Mensaje para el cliente</div>
+      <button onclick="copiarMensajeCliente()" id="btn-copiar-msg" style="padding:6px 12px;border-radius:var(--rs);border:1px solid var(--bd);background:var(--bg);color:var(--ts);font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;">&#128203; Copiar mensaje</button>
+    </div>
+    <textarea id="msg-cliente" readonly style="width:100%;min-height:190px;padding:10px;border:1px solid var(--bd);border-radius:6px;font-size:12.5px;line-height:1.55;font-family:inherit;resize:vertical;background:#F8F7F4;box-sizing:border-box;"></textarea>
+    <div style="font-size:10.5px;color:var(--ts);margin-top:6px;">Copiá este texto y envialo junto con la captura del estado de cuenta (botón "Exportar para WhatsApp").</div>
+  </div>
 </div>
 
 
@@ -1020,6 +1028,10 @@ function statusRank(c) {
   return 0;
 }
 
+function d0_15Neto(c) {
+  return Math.max(0, (c.d0_15||0) - (c.rem||0));
+}
+
 function statusBadge(c) {
   var p = c.aut>0 ? c.saldoGral/c.aut : 0;
   if(c.mayor60>0)              return '<span class="badge br">Vencido +60</span>';
@@ -1046,6 +1058,7 @@ function renderT() {
   });
   data.sort(function(a,b) {
     if(sortCol === 'estado') return sortDir*(statusRank(a)-statusRank(b));
+    if(sortCol === 'd0_15') return sortDir*(d0_15Neto(a)-d0_15Neto(b));
     var av=a[sortCol], bv=b[sortCol];
     // Para cod y campos que parecen números, ordenar numéricamente
     var an=parseFloat(av), bn=parseFloat(bv);
@@ -1065,7 +1078,7 @@ function renderT() {
 
 function renderTotalGeneral(vis) {
   var t = vis.reduce(function(a,c){
-    a.d0_15+=(c.d0_15||0); a.d15_30+=(c.d15_30||0); a.d30_60+=(c.d30_60||0); a.mayor60+=(c.mayor60||0);
+    a.d0_15+=d0_15Neto(c); a.d15_30+=(c.d15_30||0); a.d30_60+=(c.d30_60||0); a.mayor60+=(c.mayor60||0);
     a.saldo+=(c.saldo||0); a.rem+=(c.rem||0); a.saldoGral+=(c.saldoGral||0);
     return a;
   }, {d0_15:0,d15_30:0,d30_60:0,mayor60:0,saldo:0,rem:0,saldoGral:0});
@@ -1089,13 +1102,13 @@ function exportarGeneralExcel() {
   var data = window._tgFiltrados || CL;
   var t = window._tgTotales || {d0_15:0,d15_30:0,d30_60:0,mayor60:0,saldo:0,rem:0,saldoGral:0};
   var filas = [
-    ['Cód.','Cliente','Estado','0–15 días','15–30 días','30–60 días','+60 días','Saldo FC','Rem. s/FC','Saldo total','Límite CC','Últ. venta']
+    ['Cód.','Cliente','Estado','0–15 días (facturado)','15–30 días','30–60 días','+60 días','Saldo FC','Rem. s/FC','Saldo total','Límite CC','Últ. venta']
   ];
   data.forEach(function(c){
     var oc = ocultos.has(String(c.cod));
     filas.push([
       c.cod, c.nom, oc?'Oculto':(c.aut>0&&c.saldoGral>c.aut?'Excedido':c.mayor60>0?'Vencido +60':'Al día'),
-      c.d0_15||0, c.d15_30||0, c.d30_60||0, c.mayor60||0, c.saldo||0, c.rem||0, c.saldoGral||0, c.aut||0, c.ult_vta||''
+      d0_15Neto(c), c.d15_30||0, c.d30_60||0, c.mayor60||0, c.saldo||0, c.rem||0, c.saldoGral||0, c.aut||0, c.ult_vta||''
     ]);
   });
   filas.push([]);
@@ -1113,7 +1126,7 @@ function makeRow(c) {
   s += '<td>' + c.cod + '</td>';
   s += '<td title="' + c.nom + '">' + nom + (oc?' <span style="font-size:10px;color:#999">(oculto)</span>':'') + '</td>';
   s += '<td>' + (oc?'<span class="badge bg2">Oculto</span>':statusBadge(c)) + '</td>';
-  s += '<td class="' + (c.d0_15<0?'tnr':'') + '">' + fmt(c.d0_15) + '</td>';
+  s += '<td class="' + (d0_15Neto(c)<0?'tnr':'') + '">' + fmt(d0_15Neto(c)) + '</td>';
   s += '<td class="' + (c.d15_30<0?'tnr':'') + '">' + fmt(c.d15_30) + '</td>';
   s += '<td class="' + (c.d30_60<0?'tnr':'') + '">' + fmt(c.d30_60) + '</td>';
   s += '<td class="' + (c.mayor60>0&&!oc?'tnr':'') + '">' + fmt(c.mayor60) + '</td>';
@@ -1369,6 +1382,68 @@ function renderD() {
     '<div class="lblock" style="background:'+bgc+'"><div class="lt" style="color:'+bc+'">&#127974; Límite de cuenta corriente</div><div class="lcs"><div class="lc"><div class="lcl">% Utilizado</div><div class="lcv" style="color:'+bc+';font-size:24px">'+p+'%</div></div><div class="lc"><div class="lcl">Límite total</div><div class="lcv" style="color:'+bc+'">'+fmt(c.aut)+'</div></div><div class="lc"><div class="lcl">Deuda acumulada</div><div class="lcv" style="color:'+bc+'">'+fmt(c.saldoGral)+'</div></div><div class="lc"><div class="lcl">'+(cr>=0?'Disponible':'Excedido en')+'</div><div class="lcv" style="color:'+(cr>=0?'#3B6D11':'#A32D2D')+'">'+fmt(Math.abs(cr))+'</div></div></div><div class="lbw"><div class="lbf" style="width:'+Math.min(p,100)+'%;background:'+bc+'">'+(p>15?'<span>'+fmt(c.saldoGral)+'</span>':'')+'</div></div><div class="lbl2"><span>$ 0</span><span>'+fmt(c.aut)+'</span></div><span class="les" style="background:'+bc+'"><span style="width:7px;height:7px;border-radius:50%;background:#fff;opacity:.7;display:inline-block"></span>'+lbl+'</span></div>' +
     '<div class="ab"><div class="at">Saldo por antigüedad</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+aging4+'</div><div style="display:flex;justify-content:space-between;align-items:center;background:#F4F4F2;border-radius:8px;padding:10px 14px"><div style="font-size:11px;color:#6B6B68;font-weight:500">Total</div><div style="font-size:15px;font-weight:700">'+fmt(c.saldoGral)+'</div></div></div>' +
     '<div class="comp-foot"><div><div class="fl">Última venta</div><div class="fv">'+(c.ult_vta||'—')+'</div></div><div><div class="fl">Último pago</div><div class="fv">'+(c.ult_pago||'—')+'</div></div><div style="text-align:right"><div class="fl">Estado de cuenta</div><div class="fv" style="color:'+bc+'">'+lbl+'</div></div></div>';
+  actualizarMensajeCliente(c);
+}
+
+function generarMensajeCliente(c) {
+  var hoy = new Date().toLocaleDateString('es-AR');
+  var d0  = d0_15Neto(c);
+  var tramos = [];
+  if (d0 > 0)             tramos.push('• 0 a 15 días: ' + fmt(d0));
+  if ((c.d15_30||0) > 0)  tramos.push('• 16 a 30 días: ' + fmt(c.d15_30));
+  if ((c.d30_60||0) > 0)  tramos.push('• 31 a 60 días: ' + fmt(c.d30_60));
+  if ((c.mayor60||0) > 0) tramos.push('• Más de 60 días (VENCIDO): ' + fmt(c.mayor60));
+
+  var msg = 'Hola ' + c.nom + ', te compartimos el estado de tu cuenta corriente al ' + hoy + ':\n\n';
+  msg += 'Saldo total: ' + fmt(c.saldoGral) + '\n';
+  if (tramos.length) {
+    msg += '\nDetalle por antigüedad:\n' + tramos.join('\n') + '\n';
+  } else {
+    msg += '\nNo registrás saldo facturado pendiente.\n';
+  }
+  if ((c.rem||0) > 0) {
+    msg += '\nPendiente de facturación (remitos aún sin facturar, no vencido): ' + fmt(c.rem) + '\n';
+  }
+  if ((c.mayor60||0) > 0) {
+    msg += '\n\u26A0\uFE0F Contás con saldo vencido hace más de 60 días. Te pedimos regularizar a la brevedad.\n';
+  }
+  if (c.aut > 0) {
+    var cr = c.aut - c.saldoGral;
+    msg += '\nLímite de cuenta corriente: ' + fmt(c.aut);
+    msg += cr>=0 ? ' (disponible: '+fmt(cr)+')' : ' (EXCEDIDO en '+fmt(Math.abs(cr))+')';
+    msg += '\n';
+  }
+  msg += '\nAdjuntamos el estado de cuenta detallado. Ante cualquier consulta, quedamos a disposición.\n\nQuequén 554 S.A.';
+  return msg;
+}
+
+function actualizarMensajeCliente(c) {
+  var ta = document.getElementById('msg-cliente');
+  if (!ta) return;
+  ta.value = generarMensajeCliente(c);
+}
+
+function copiarMensajeCliente() {
+  var ta = document.getElementById('msg-cliente');
+  var btn = document.getElementById('btn-copiar-msg');
+  if (!ta || !btn) return;
+  var orig = btn.innerHTML;
+  function marcarCopiado() {
+    btn.innerHTML = '&#10003; Copiado';
+    setTimeout(function(){ btn.innerHTML = orig; }, 2000);
+  }
+  function fallback() {
+    ta.removeAttribute('readonly');
+    ta.focus(); ta.select(); ta.setSelectionRange(0, 999999);
+    try { document.execCommand('copy'); marcarCopiado(); }
+    catch(e) { alert('No se pudo copiar automáticamente. Seleccioná el texto y copialo manualmente.'); }
+    ta.setAttribute('readonly', 'readonly');
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(ta.value).then(marcarCopiado).catch(fallback);
+  } else {
+    fallback();
+  }
 }
 
 function exportarIndividualExcel() {
