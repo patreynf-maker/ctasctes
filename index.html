@@ -101,6 +101,8 @@ td:nth-child(2){text-align:left;font-weight:500;max-width:190px;overflow:hidden;
 .bver{font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid var(--azm);color:var(--azm);background:var(--azc);cursor:pointer;white-space:nowrap}
 .bver:hover{background:var(--azm);color:#fff}
 .bocultar{font-size:10px;padding:3px 7px;border-radius:20px;border:1px solid var(--bd);cursor:pointer;white-space:nowrap}
+.bcopiar{font-size:10px;padding:3px 7px;border-radius:20px;border:1px solid var(--vd);color:var(--vd);background:var(--vdc);cursor:pointer;white-space:nowrap}
+.bcopiar:hover{background:var(--vd);color:#fff}
 
 /* REPORTES */
 .rep-wrap{padding:16px 20px 24px}
@@ -245,7 +247,7 @@ td:nth-child(2){text-align:left;font-weight:500;max-width:190px;overflow:hidden;
   <div class="tw">
     <table>
       <thead id="thead-main"><tr>
-        <th style="width:90px">Acciones</th>
+        <th style="width:130px">Acciones</th>
         <th class="sortable" data-col="cod">Cód.</th>
         <th class="sortable" data-col="nom">Cliente</th>
         <th class="sortable" data-col="estado">Estado</th>
@@ -1119,10 +1121,11 @@ function exportarGeneralExcel() {
 function makeRow(c) {
   var oc = ocultos.has(String(c.cod));
   var btnVer = '<button class="bver" onclick="event.stopPropagation();verD(\'' + c.cod + '\')" title="Ver estado">Ver &#8594;</button>';
+  var btnMsg = '<button class="bcopiar" onclick="event.stopPropagation();copiarMensajeDeCliente(\'' + c.cod + '\', this)" title="Copiar mensaje personalizado">&#128203;</button>';
   var btnOc  = '<button class="bocultar" onclick="event.stopPropagation();toggleOculto(\'' + c.cod + '\')" title="' + (oc?'Mostrar':'Ocultar') + '" style="background:' + (oc?'var(--vdc)':'var(--bg)') + ';color:' + (oc?'var(--vd)':'var(--ts)') + '">' + (oc?'&#128065;':'&#128584;') + '</button>';
   var nom = c.nom.length>28 ? c.nom.slice(0,28)+'\u2026' : c.nom;
   var s = '<tr ondblclick="verD(\'' + c.cod + '\')" style="' + (oc?'opacity:.4;background:#F8F7F4':'') + '">';
-  s += '<td style="border-left:none"><div style="display:flex;gap:4px;align-items:center">' + btnVer + btnOc + '</div></td>';
+  s += '<td style="border-left:none"><div style="display:flex;gap:4px;align-items:center">' + btnVer + btnMsg + btnOc + '</div></td>';
   s += '<td>' + c.cod + '</td>';
   s += '<td title="' + c.nom + '">' + nom + (oc?' <span style="font-size:10px;color:#999">(oculto)</span>':'') + '</td>';
   s += '<td>' + (oc?'<span class="badge bg2">Oculto</span>':statusBadge(c)) + '</td>';
@@ -1421,6 +1424,33 @@ function actualizarMensajeCliente(c) {
   var ta = document.getElementById('msg-cliente');
   if (!ta) return;
   ta.value = generarMensajeCliente(c);
+}
+
+function copiarTexto(texto, onOk) {
+  function fallback() {
+    var ta = document.createElement('textarea');
+    ta.value = texto; ta.setAttribute('readonly','readonly');
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+    if (ok) onOk(); else alert('No se pudo copiar automáticamente.');
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(texto).then(onOk).catch(fallback);
+  } else { fallback(); }
+}
+
+function copiarMensajeDeCliente(cod, btn) {
+  var c = CL.find(function(x){ return String(x.cod) === String(cod); });
+  if (!c) return;
+  var orig = btn.innerHTML;
+  copiarTexto(generarMensajeCliente(c), function() {
+    btn.innerHTML = '&#10003;';
+    setTimeout(function(){ btn.innerHTML = orig; }, 1500);
+  });
 }
 
 function copiarMensajeCliente() {
