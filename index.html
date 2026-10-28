@@ -1398,7 +1398,7 @@ function generarMensajeCliente(c) {
   if ((c.mayor60||0) > 0) tramos.push('• Más de 60 días (VENCIDO): ' + fmt(c.mayor60));
 
   var msg = 'Hola ' + c.nom + ', te compartimos el estado de tu cuenta corriente al ' + hoy + ':\n\n';
-  msg += 'Saldo total: ' + fmt(c.saldoGral) + '\n';
+  msg += 'Saldo total: ' + fmt((c.saldoGral||0) - (c.rem||0)) + '\n';
   if (tramos.length) {
     msg += '\nDetalle por antigüedad:\n' + tramos.join('\n') + '\n';
   } else {
@@ -1413,7 +1413,8 @@ function generarMensajeCliente(c) {
   if (c.aut > 0) {
     var cr = c.aut - c.saldoGral;
     msg += '\nLímite de cuenta corriente: ' + fmt(c.aut);
-    msg += cr>=0 ? ' (disponible: '+fmt(cr)+')' : ' (EXCEDIDO en '+fmt(Math.abs(cr))+')';
+    var cNota = (c.rem||0) > 0 ? ', contando los remitos pendientes' : '';
+    msg += cr>=0 ? ' (disponible'+cNota+': '+fmt(cr)+')' : ' (EXCEDIDO'+cNota+' en '+fmt(Math.abs(cr))+')';
     msg += '\n';
   }
   msg += '\nAdjuntamos el estado de cuenta detallado. Ante cualquier consulta, quedamos a disposición.\n\nQuequén 554 S.A.';
